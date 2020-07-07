@@ -1,0 +1,228 @@
+#KNOWN ISSUES
+#1) R code input doesent work anymore 
+
+
+
+library(shiny)
+library(beepr)
+library(shinydashboard)
+library(shinyWidgets)
+library(base64enc)
+library(shinyjs)
+
+#Get the Euclid Toolkit
+source("EuclidToolkit.R")
+#Length
+#Takes in 2 points and finds length between them
+Length<-function(A,B){
+  return( ((A[1]-B[1])^2+(A[2]-B[2])^2)^0.5 )
+}
+
+
+# Define UI for application that draws a histogram
+header <- dashboardHeader(title = "Greek Propositions")
+
+sidebar <- dashboardSidebar(  
+  textInput("title", "Make Title"),
+  actionButton("titleButton", "Make Title"),
+  sliderInput("numSlides", "Number of slides", min=1, max=10, value=5, ticks=FALSE),
+  
+  textAreaInput(inputId="codeBlock", label="Type Code Here", value = "", width = NULL, height = NULL,
+                cols = NULL, rows = NULL, placeholder = NULL, resize = NULL),
+  
+  actionButton("numSlidesButton", "Make Slides"),
+  
+  fileInput("upload", "Upload image", accept = "image/png")
+)
+
+body <- dashboardBody(
+  # Application title
+  titlePanel(uiOutput("proposition")),
+  
+  selectInput("slides", label = h3("Slides"), 
+              choices = "", 
+              selected = 1),
+  
+  #HTML Text Editor
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "https://cdn.quilljs.com/1.3.6/quill.snow.css"),
+    tags$link(rel = "stylesheet", type = "text/css", href = "stuff.css"),
+    tags$script(src="https://cdn.quilljs.com/1.3.6/quill.js"),
+    tags$script(src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js")
+  ),
+  h3("Insert Greek text here:"),
+  includeHTML("www/stuff.html"),
+  
+  #Want to get an english translation
+  #when presenting need an extra button to show translation or hide
+  h3("Insert English Translation here:"),
+  includeHTML("www/stuff2.html"),
+  
+  HTML("&nbsp"),
+  
+  uiOutput("image"),
+  
+  useShinyjs(),
+  
+  tags$div(
+    class="codewrapper",
+    runcodeUI(code = "shinyjs::alert('Hello!')", type="textarea")
+  ),
+  tags$br(),
+  
+  # Show plot and text
+  verbatimTextOutput("message"),
+  verbatimTextOutput("greek"),
+  tags$br(),
+  
+  plotOutput("pplot"),
+  
+  HTML("&nbsp"),
+  
+  splitLayout(
+    cellArgs = list(style = "padding-left: 12%"),
+    actionButton("Previous", "<--"),
+    actionButton("SaveSlide", "Save Slide"),
+    actionButton("Next", "-->")
+  )
+)
+
+ui <- dashboardPage(header, sidebar, body)
+
+code <- "Enter Code Here"
+
+# Define server logic required to draw a histogram
+server <- function(session, input, output) {
+  
+  runcodeServer();
+  
+  # #Draw File png
+  #commented out for some tests, to uncomment out, highlight and press ctrl+shift+c
+  # base64 <- reactive({
+  #   inFile <- input[["upload"]]
+  #   if(!is.null(inFile)){
+  #     dataURI(file = inFile$datapath, mime = "image/png")
+  #   }
+  # })
+  # output[["image"]] <- renderUI({
+  #   if(!is.null(base64())){
+  #     tags$div(
+  #       tags$img(src= base64(), width="100%"),
+  #       style = "width: 400px;"
+  #     )
+  #   }
+  # })
+  
+  #Rest of the code
+  english=T
+  
+  tracke=reactiveValues()
+  tracke$count=-1
+  
+  greek_lines=c()
+  english_lines=c()
+  
+  j=eventReactive(input$Next, {
+    tracke$count=tracke$count+1
+    
+    tracker=tracke$count
+    English=c("",
+              "Let BAC be the given rectilinear angle", 
+              "Let the Point D have been taken somewhere on AB (lets just say 3 across the line BA)",
+              "And let AE equal to AD have been cut off from AC (so length 2) F is a point under A",
+              "And let DE have been joined",
+              "And let the equilateral triangle DEF have been constructed upon DE",
+              "And Let AF to have been joined.",
+              "I say that the angle BAC has been cut in half by the straight line AF"
+    )
+    return(English[tracker%%8+1*(tracker%%8==0)])
+  })
+  
+  #Make title
+  observeEvent(input$titleButton, {
+    output$proposition <- renderUI(input$title)
+  })
+  
+  observeEvent(input$numSlidesButton, {
+    
+    output$pplot <- renderPlot(blank.euclid.plot(3, TRUE))
+    updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:input$numSlides))
+    #code <<- input$codeBlock
+    #print(input$typeCode)
+    #output$pplot <- renderPlot(blank.euclid.plot(3, TRUE))
+    greek_lines=numeric(input$numSlides)
+    english_lines=numeric(input$numSlides)
+  })
+  
+  #Saving a slide
+  #Saves the Greek input and english
+  #(NEEDS TO SAVE CODE)
+  observeEvent(input$SaveSlide, {
+    print("Saving slide")
+    slidenumber=strtoi(strsplit(input$slides,"#")[[1]][2])
+    print(slidenumber)
+    greek_lines[slidenumber]=input$mydata 
+    english_lines[slidenumber]=input$englishtrans
+    print(greek_lines)
+    print(english_lines)
+  })
+  
+  
+  
+  
+  output$message<-renderText({
+    if(input$Next == 0){
+      return("")
+    }
+    j()
+  })
+  
+  output$pplot<-renderPlot({
+    tracker=tracke$count%%8
+    if(tracker>=0){
+      blank.euclid.plot(3, TRUE)
+    }
+    
+    if(tracker>=1){
+      B <- c(-3,-2)
+      C <- c(3,-2)
+      A <- c(0,2)
+      draw.euclid.line(A,B)
+      draw.euclid.line(A,C)
+      
+      label.euclid.points(cbind(A,B,C), c("A", "B","C"), c(12,6,6),greek= TRUE)
+    }
+    if(tracker>=2){
+      GBA<-acos(3/5)
+      
+      D=c(3/5*3+B[1], sin(GBA)*3+B[2])
+      label.euclid.point(D,"D",9,greek=T)
+    }
+    if(tracker>=3){
+      GAF<-pi/2-GBA
+      
+      E=c(sin(GAF)*2+A[1],A[2]-cos(GAF)*2)
+      label.euclid.point(E,"E",3,greek=T)
+    }
+    if(tracker>=4){
+      draw.euclid.line(D,E)
+    }
+    if(tracker>=5){
+      DE=Length(D,E)
+      F_=c(DE*cos(pi/3)+D[1],D[2]-DE*sin(pi/3))
+      
+      draw.euclid.line(D,F_)
+      draw.euclid.line(F_,E)
+      label.euclid.point(F_,"F",6,greek=T)
+    }
+    if(tracker>=6){
+      draw.euclid.line(F_,A)
+    }
+  })
+  
+  
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+

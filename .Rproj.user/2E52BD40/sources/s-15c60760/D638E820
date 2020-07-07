@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1593834441483.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D638E820",
+    "lastKnownWriteTime" : 1593875382,
+    "last_content_update" : 1593875382970,
+    "path" : "/cloud/project/app.R",
+    "project_path" : "app.R",
+    "properties" : {
+        "cursorPosition" : "87,4",
+        "scrollLine" : "76"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

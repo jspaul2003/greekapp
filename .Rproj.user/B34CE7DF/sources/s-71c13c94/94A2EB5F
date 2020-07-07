@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1593827339477.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "908745980",
+    "id" : "94A2EB5F",
+    "lastKnownWriteTime" : 1593829477,
+    "last_content_update" : 1593829477975,
+    "path" : "/cloud/project/www/ace2.html",
+    "project_path" : "www/ace2.html",
+    "properties" : {
+        "cursorPosition" : "23,19",
+        "scrollLine" : "4"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "html"
+}

@@ -1,0 +1,55 @@
+
+.custom_btn, #runcode_run, #SaveSlide, #Next, #Previous, #Preview, #GoBack{
+    background-color: dodgerblue;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 5px 2px;
+    cursor: pointer;
+    border-radius: 5%;
+}
+
+.ql-snow .ql-editor{
+    background-color: white;
+    overflow: visible;
+}
+
+.ql-toolbar{
+    background-color: white;
+}
+
+#editor{ 
+    width:100%;
+    height:10%;
+    padding-bottom:10%;
+    padding-top:5%;
+}
+
+#ace-holder{
+    margin:5px 0;
+    padding:3px;
+}
+/*
+BELOW IS CSS FOR R SHINY ELEMENTS ONLY
+*/
+
+/*
+Makes the console as wide as the other text areas
+*/
+#typeCode-runcode_expr{
+  width:100%;
+  height:10%;
+}
+
+.codewrapper{
+  margin:5px 0;
+  padding:3px;
+}
+
+.form-group{
+    width:100%!important;
+}

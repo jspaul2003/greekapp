@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1593792436618.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "7269D322",
+    "lastKnownWriteTime" : 1593807826,
+    "last_content_update" : 1593807826485,
+    "path" : "/cloud/project/www/stuff.html",
+    "project_path" : "www/stuff.html",
+    "properties" : {
+        "cursorPosition" : "27,39",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "html"
+}

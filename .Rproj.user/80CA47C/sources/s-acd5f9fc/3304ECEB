@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1594012873014.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "3304ECEB",
+    "lastKnownWriteTime" : 1594012932,
+    "last_content_update" : 1594012932160,
+    "path" : "/cloud/project/EuclidToolkit.R",
+    "project_path" : "EuclidToolkit.R",
+    "properties" : {
+        "cursorPosition" : "92,0",
+        "scrollLine" : "64"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

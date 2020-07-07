@@ -1,0 +1,29 @@
+<div id="editor-container">
+</div>
+    <script>
+        var toolbarOptions = [
+             ['bold', 'italic'],
+             [{ 'size': ['small', false, 'large', 'huge'] }],
+             ['code-block'],    
+             [{ 'color': [] }, { 'background': [] }],
+             [{ list: 'ordered' }, { list: 'bullet' }],
+             [{ 'font': [] }],
+            ] 
+         
+             var quill = new Quill('#editor-container', {
+             modules: {
+             toolbar: {
+                 container: toolbarOptions,
+                 }     
+            },
+             placeholder: 'Type stuff here...',
+             theme: 'snow'
+         });
+    </script>  
+    <br>
+    <input type="submit" value='Save' id='btn' onclick="
+    var variable=document.getElementById('editor-container').getElementsByClassName('ql-editor')[0].innerHTML;
+    console.log(variable);
+    Shiny.onInputChange('mydata', variable);
+    ">
+    <br>

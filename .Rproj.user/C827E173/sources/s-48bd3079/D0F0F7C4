@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1593786377786.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D0F0F7C4",
+    "lastKnownWriteTime" : 1593789386,
+    "last_content_update" : 1593789386152,
+    "path" : "/cloud/project/www/stuff.css",
+    "project_path" : "www/stuff.css",
+    "properties" : {
+        "cursorPosition" : "1,24",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "css"
+}

@@ -1,0 +1,28 @@
+<div id="editor-container2">
+</div>
+    <script>
+        var toolbarOptions = [
+             ['bold', 'italic'],
+             [{ 'size': ['small', false, 'large', 'huge'] }],
+             ['code-block'],    
+             [{ 'color': [] }, { 'background': [] }],
+             [{ list: 'ordered' }, { list: 'bullet' }],
+             [{ 'font': [] }],
+            ] 
+         
+             var quill = new Quill('#editor-container2', {
+             modules: {
+             toolbar: {
+                 container: toolbarOptions,
+                 }     
+            },
+             placeholder: 'Type stuff here...',
+             theme: 'snow'
+         });
+    </script>  
+    <br>
+    <button type="button" class='custom_btn' onclick="
+    var variable=document.getElementById('editor-container2').getElementsByClassName('ql-editor')[0].innerHTML;
+    Shiny.onInputChange('englishtrans', variable);
+    ">Save</button>
+    <br>

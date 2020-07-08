@@ -8,8 +8,10 @@
 #empty yay
 
 #TO DO (big things):
-#general css
-#user dashboard, saving presentations
+#-general css
+#-user dashboard
+#-loading saved presentation
+#-javascript cookies?
 
 
 #PACKAGES:
@@ -23,22 +25,12 @@ library(RMySQL)
 library(DBI)
 library(pool)
 library(dplyr)
-library(validate)
+library(stringr)
 
 
 #SOURCES:
 source("EuclidToolkit.R")
 source("SphericalToolkit.R")
-
-#MORE SQL STUFF AND SQL FUNCTIONS:
-
-
-General <- dbPool(drv = RMySQL::MySQL(),
-               dbname = "General",
-               host = "161.35.11.118",
-               username = "rshiny",
-               password = "nUXfFY7yD5UATu6H",
-               port = 3306)
 
 
 #GLOBAL VARIABLES:
@@ -127,7 +119,7 @@ sidebar <- dashboardSidebar(
     id = "SP_Edit",
     condition = "input.Present%2==0",
     textInput("title", "Make Title", placeholder = "Untitled"),
-    actionButton("titleButton", "Make Title"),
+    #actionButton("titleButton", "Make Title"),
     sliderInput("numSlides", "Number of slides", min=1, max=10, value=5, ticks=FALSE),
     actionButton("addSlidesButton", "Add Slide +"),
     checkboxInput("SecondPlot", label = "Second Plot?", value = F),
@@ -163,6 +155,19 @@ sidebar <- dashboardSidebar(
       id="Dashboard",
       tags$h1("Hello"),
       actionButton("LogOutBTN", "Log Out"),
+      tags$div(id="SavePres2",
+        actionButton("SavePres", "Save New Presentation"),
+      ),
+      selectInput("LoadPres", label = h3("Load Presentation"), 
+                  choices = "New", 
+                  selected = "New"),
+      shinyjs::hidden(
+        tags$div(
+          id="dash",
+          actionButton("UpdateP", "Update Presentation"),
+          actionButton("DeleteP", "Delete Presentation")
+        )
+      )
     )
   )
   
@@ -325,73 +330,6 @@ code <- "Enter Code Here"
 
 server <- function(session, input, output) {
   
-  #SQL STUFF:
-
-  logged_in=reactiveValues()
-  logged_in$user=""
-  logged_in$logged=F
-
-
-
-  observeEvent(input$SignUpBTN,{
-
-    if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$email ,"'")))==0 && isValidEmail(input$email) && nchar(input$password)>5){
-      query <- sprintf<-(paste("INSERT INTO `Users` (`Email`, `Password`) VALUES ('",
-                               input$email, " ','", input$password, "');", sep = ""))
-      dbExecute(General, query)
-      shinyjs::show("Dashboard")
-      shinyjs::hide("SignUp")
-      shinyjs::hide("Login")
-      logged_in$user=input$Email
-      logged_in$logged=T
-    }
-    else{
-      errors=c()
-      if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$email ,"'")))>0){
-        errors=c(errors,"Email already taken ")
-      }
-      if(!isValidEmail(input$email)){
-        errors=c(errors,"Email is not valid ")
-      }
-      if(nchar(input$password)<6){
-        errors=c(errors,"Password requires 6 characters minimum ")
-      }
-      output$ErrorSU<-renderText(errors[1:length(errors)])
-    }
-  })
-
-  observeEvent(input$LogInBTN,{
-
-    if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$Email ,"'")))==1 && dbGetQuery(General, paste0("SELECT `Password` FROM Users WHERE Email = '", input$Email ,"'"))[[1]]==input$Password){
-      shinyjs::show("Dashboard")
-      shinyjs::hide("SignUp")
-      shinyjs::hide("Login")
-      logged_in$user=input$Email
-      logged_in$logged=T
-    }
-    else{
-      if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$Email ,"'")))==0){
-        errors="No account under this email exists"
-      }
-      else{
-        errors="The password you entered is not correct"
-      }
-      output$ErrorLI<-renderText(errors)
-    }
-  })
-  
-  observeEvent(input$LogOutBTN,{
-    shinyjs::hide("Dashboard")
-    shinyjs::show("SignUp")
-    shinyjs::show("Login")
-    logged_in$user=""
-    logged_in$logged=F
-  })
-
-  
-  
-  
-  
   greek_lines=reactiveValues()
   english_lines=reactiveValues()
   user_code=reactiveValues()
@@ -506,8 +444,13 @@ server <- function(session, input, output) {
   # })
   
   #Make title
-  observeEvent(input$titleButton, {
-    output$proposition <- renderUI(input$title)
+  observeEvent(input$title,{
+    if(input$title==""){
+      output$proposition<-renderUI("Untitled")
+    }
+    else{
+      output$proposition <- renderUI(input$title)
+    }
   })
   
   #Adding Slides
@@ -556,6 +499,7 @@ server <- function(session, input, output) {
     session$sendCustomMessage("english_lines_stuff", english_lines$lines[slidenumber])
     session$sendCustomMessage("user_code_stuff", user_code$lines[slidenumber])
     session$sendCustomMessage("user_code_stuff2", user_code2$lines[slidenumber])
+    presentations$wason2=slidenumber
   })
   
   #Saving a slide
@@ -661,6 +605,377 @@ server <- function(session, input, output) {
   #     draw.euclid.line(F_,A)
   #   }
   # })
+  
+  
+  
+  #SQL STUFF:
+  
+  logged_in=reactiveValues()
+  logged_in$user=-1
+  logged_in$logged=F
+  
+  presentation=reactiveValues()
+  presentation$saved=F
+
+  
+  observeEvent(input$SavePres, {
+    
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    if(input$title==""){
+      title='Untitled'
+    }
+    else{
+      title=input$title
+    }
+    
+    
+    #FLAW: 2 users under same email save something at same time
+    #current (bad) fix is overwrite is true
+    BARCODE= paste("presentation", 1 , sub(" ",'',Sys.time()))
+    #I dont know why I have to run more than twice but I don't really want to fight R
+    BARCODE=sub(" ",'',BARCODE)
+    BARCODE=sub(" ",'',BARCODE)
+    BARCODE=str_replace_all(BARCODE, "[^[:alnum:]]", "")
+    BARCODE=sub(" ",'',BARCODE)
+    
+    #Junction1 1:M setup
+    query <- sprintf<-(paste("INSERT INTO `Junction1` (`User_ID`, `PRESENTATION_TABLE_NAME`, `TITLE`, `NSLIDES`) VALUES ('",
+                             logged_in$user, " ','", BARCODE, "','", title, " ','", numSlides, "');", sep = ""))
+    dbExecute(General, query)
+    
+    #New Table for Presentation
+    pres.data <- data.frame(user_code$lines, user_code2$lines, greek_lines$lines, english_lines$lines)
+    pres.data$ID <- seq.int(nrow(pres.data))
+    colnames(pres.data)=c("CODE1", "CODE2", "GREEK", "ENGLISH",  "ID")
+    
+    dbWriteTable(General, BARCODE, value=pres.data, row.names = FALSE,overwrite=T)
+    
+    poolClose(General)
+    
+    presentations$wason=BARCODE
+    presentations$refresh=T
+  
+    
+    
+    
+    })
+    
+  
+  observeEvent(input$SignUpBTN,{
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$email ,"'")))==0 && isValidEmail(input$email) && nchar(input$password)>5){
+      query <- sprintf<-(paste("INSERT INTO `Users` (`Email`, `Password`) VALUES ('",
+                               input$email, " ','", input$password, "');", sep = ""))
+      dbExecute(General, query)
+      shinyjs::show("Dashboard")
+      shinyjs::hide("SignUp")
+      shinyjs::hide("Login")
+      logged_in$user=dbGetQuery(General, paste0("SELECT `ID` FROM Users WHERE Email = '", input$Email ,"'"))[[1]]
+      logged_in$logged=T
+    }
+    else{
+      errors=c()
+      if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$email ,"'")))>0){
+        errors=c(errors,"Email already taken ")
+      }
+      if(!isValidEmail(input$email)){
+        errors=c(errors,"Email is not valid ")
+      }
+      if(nchar(input$password)<6){
+        errors=c(errors,"Password requires 6 characters minimum ")
+      }
+      output$ErrorSU<-renderText(errors[1:length(errors)])
+    }
+    
+    poolClose(General)
+    
+  })
+  
+  observeEvent(input$LogInBTN,{
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$Email ,"'")))==1 && dbGetQuery(General, paste0("SELECT `Password` FROM Users WHERE Email = '", input$Email ,"'"))[[1]]==input$Password){
+      shinyjs::show("Dashboard")
+      shinyjs::hide("SignUp")
+      shinyjs::hide("Login")
+      logged_in$user=dbGetQuery(General, paste0("SELECT `ID` FROM Users WHERE Email = '", input$Email ,"'"))[[1]]
+      logged_in$logged=T
+    }
+    else{
+      if(nrow(dbGetQuery(General, paste0("SELECT * FROM Users WHERE Email = '", input$Email ,"'")))==0){
+        errors="No account under this email exists"
+      }
+      else{
+        errors="The password you entered is not correct"
+      }
+      output$ErrorLI<-renderText(errors)
+    }
+    
+    poolClose(General)
+    
+  })
+  
+  observeEvent(input$LogOutBTN,{
+    shinyjs::hide("Dashboard")
+    shinyjs::show("SignUp")
+    shinyjs::show("Login")
+    logged_in$user=-1
+    logged_in$logged=F
+  })
+  
+  #Loading, updating and deleting presentations
+  presentations=reactiveValues()
+  presentations$list=c()
+  presentations$nslides=c(5)
+  presentations$refresh=F
+  presentations$wason="New"
+  presentations$wason2=1
+  
+  observe({
+    if(logged_in$user!=-1){
+      presentations$refresh=T
+    }
+  })
+  
+  observe({
+    if(presentations$refresh==T){
+      
+      General <- dbPool(drv = RMySQL::MySQL(),
+                        dbname = "General",
+                        host = "161.35.11.118",
+                        username = "rshiny",
+                        password = "nUXfFY7yD5UATu6H",
+                        port = 3306)
+      
+      
+      my_pres=dbGetQuery(General, paste0("SELECT * FROM Junction1 WHERE USER_ID = '", logged_in$user ,"'"))
+      if(nrow(my_pres)>=1){
+        
+        presentations$list=c("New", my_pres$TITLE)
+        presentations$tables=c("New", my_pres$PRESENTATION_TABLE_NAME)
+        list=as.list(presentations$tables)
+        names(list)=presentations$list
+        updateSelectInput(session, "LoadPres", label = "Load Presentation", choices = list )
+        
+        presentations$nslides=c("5",my_pres$NSLIDES)
+        
+        #print(presentations$list)
+      }
+      else{
+        presentations$list=c("New")
+        presentations$tables=c("New")
+        list=as.list(presentations$tables)
+        presentations$wason="New"
+        names(list)=presentations$list
+      }
+
+      updateSelectInput(session, "LoadPres", label = "Load Presentation", choices = list,selected=presentations$wason)
+      
+      
+      #print(presentations$wason)
+      #print(presentations$refresh)
+      
+
+      
+      
+      
+      poolClose(General)
+      
+      presentations$wason="New"
+      presentations$refresh=F
+      presentations$refresh2=T
+    }
+  })  
+  
+  observeEvent(input$LoadPres, {
+    
+    #print(input$LoadPres)
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    if(input$LoadPres=="New"){
+      empty=dbGetQuery(General, paste0("SELECT * FROM EMPTY"))
+      #print(empty)
+      user_code$lines=empty$CODE1
+      user_code2$lines=empty$CODE2
+      greek_lines$lines=empty$GREEK
+      english_lines$lines=empty$ENGLISH
+      numSlides=5
+      shinyjs::show("SavePres2")
+      shinyjs::hide("dash")
+      
+      updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:numSlides),selected = "Slide #1")
+      
+      output$proposition <- renderUI("Untitled")
+      updateTextInput(session,"title","Make Title", "",placeholder = "Untitled")
+      
+      slidenumber=1
+      session$sendCustomMessage("greek_lines_stuff", greek_lines$lines[slidenumber])
+      session$sendCustomMessage("english_lines_stuff", english_lines$lines[slidenumber])
+      session$sendCustomMessage("user_code_stuff", user_code$lines[slidenumber])
+      session$sendCustomMessage("user_code_stuff2", user_code2$lines[slidenumber])
+      
+    }
+    else{
+      #print("hello")
+      myslides=dbGetQuery(General, paste0("SELECT * FROM ", input$LoadPres))
+      user_code$lines=myslides$CODE1
+      user_code2$lines=myslides$CODE2
+      greek_lines$lines=myslides$GREEK
+      english_lines$lines=myslides$ENGLISH
+      numSlides=as.numeric(presentations$nslides[match(input$LoadPres,presentations$tables)])
+      Title=presentations$list[match(input$LoadPres,presentations$tables)]
+      #print(numSlides)
+      
+      shinyjs::hide("SavePres2")
+      shinyjs::show("dash")
+      
+      if(presentations$refresh2==F){
+        presentations$wason2=1
+      }
+      
+      updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:numSlides), selected= paste("Slide #", presentations$wason2,sep=""))
+      
+      output$proposition <- renderUI(Title)
+      if(Title!="Untitled"){
+        updateTextInput(session,"title","Make Title", Title,placeholder = "Untitled")
+      }
+      else{
+        updateTextInput(session,"title","Make Title", "",placeholder = "Untitled")
+        
+      }
+      
+      slidenumber=presentations$wason2
+      session$sendCustomMessage("greek_lines_stuff", greek_lines$lines[slidenumber])
+      session$sendCustomMessage("english_lines_stuff", english_lines$lines[slidenumber])
+      session$sendCustomMessage("user_code_stuff", user_code$lines[slidenumber])
+      session$sendCustomMessage("user_code_stuff2", user_code2$lines[slidenumber])
+      
+    }
+    presentations$wason2=1
+    poolClose(General)
+    presentations$refresh2=F
+  })
+  
+  observeEvent(input$UpdateP, {
+    
+    #print("Saving slide")
+    slidenumber=strtoi(strsplit(input$slides,"#")[[1]][2])
+    #Need to avoid a replacement length = 0 error
+    if(length(input$mydata)>0){
+      greek_lines$lines[slidenumber]=input$mydata 
+    }
+    if(length(input$englishtrans)>0){
+      english_lines$lines[slidenumber]=input$englishtrans
+    }
+    if(length(input$user_code)>0){
+      user_code$lines[slidenumber]=input$user_code
+    }  
+    if(length(input$user_code)>0){
+      user_code2$lines[slidenumber]=input$user_code2
+    }  
+    
+    
+    
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    if(input$title==""){
+      title='Untitled'
+    }
+    else{
+      title=input$title
+    }
+    #print(title)
+    
+    
+    #Junction1 1:M setup
+    query <- sprintf<-(paste("UPDATE `Junction1` SET TITLE = ","'",title,"' WHERE 
+                             PRESENTATION_TABLE_NAME = '",  input$LoadPres,"' ", 
+                             sep = ""))
+    dbExecute(General, query)
+    
+    #New Table for Presentation
+    pres.data <- data.frame(user_code$lines, user_code2$lines, greek_lines$lines, english_lines$lines)
+    pres.data$ID <- seq.int(nrow(pres.data))
+    colnames(pres.data)=c("CODE1", "CODE2", "GREEK", "ENGLISH",  "ID")
+    
+    dbWriteTable(General, input$LoadPres, value=pres.data, row.names = FALSE,overwrite=T)
+    
+    poolClose(General)
+    
+    presentations$wason=input$LoadPres
+
+    presentations$refresh=T
+  })
+  
+  
+  observeEvent(input$DeleteP,{
+    
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    
+    
+    query <- sprintf<-(paste("DELETE FROM Junction1 WHERE 
+                             PRESENTATION_TABLE_NAME = '",  input$LoadPres,"' ", 
+                             sep = ""))
+    dbExecute(General, query)
+    
+    
+    query <- sprintf<-(paste("DROP TABLE ",  input$LoadPres," ", 
+                             sep = ""))
+    dbExecute(General, query)
+    
+    
+    
+    
+    
+    
+    poolClose(General)
+    presentations$wason="New"
+    presentations$wason2=1
+    presentations$refresh=T
+  })
+  
+  
+
+  
+  
   
   
 }

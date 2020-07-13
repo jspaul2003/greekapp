@@ -5,7 +5,11 @@
 #PASSWORD: 8a8f9c2c9356a2f939e918771751b7b86317a1d1f7077d84
 
 #KNOWN ISSUES:
-#empty yay
+#When switching to presentation mode in "New"
+#Non new data displayed
+#Go back to new data page when logging out
+#clearing daya when going to new
+
 
 #TO DO (big things):
 #-general css
@@ -140,7 +144,7 @@ sidebar <- dashboardSidebar(
     textOutput("ErrorSU"),
     actionButton("SignUpBTN", "Sign Up"),
   ),
-
+  
   tags$div(
     id="Login",
     textInput("Email","Email", placeholder = "Email"),
@@ -148,7 +152,7 @@ sidebar <- dashboardSidebar(
     textOutput("ErrorLI"),
     actionButton("LogInBTN", "Log In"),
   ),
-
+  
   shinyjs::hidden(
     #We can display users saved presentations here
     tags$div(
@@ -156,7 +160,7 @@ sidebar <- dashboardSidebar(
       tags$h1("Hello"),
       actionButton("LogOutBTN", "Log Out"),
       tags$div(id="SavePres2",
-        actionButton("SavePres", "Save New Presentation"),
+               actionButton("SavePres", "Save New Presentation"),
       ),
       selectInput("LoadPres", label = h3("Load Presentation"), 
                   choices = "New", 
@@ -305,16 +309,16 @@ body <- dashboardBody(
   
   tags$div(
     id="console",
-
+    
     tags$br(),
-
+    
     #Console should be removed/hidden on final version
     useShinyjs(),
-    h3("R Console:"),
-    tags$div(
-      class="codewrapper",
-      runcodeUI(code = "", type="textarea")
-    ),
+    # h3("R Console:"),
+    # tags$div(
+    #   class="codewrapper",
+    #   runcodeUI(code = "", type="textarea")
+    # ),
     tags$br(),
   )
   
@@ -616,7 +620,7 @@ server <- function(session, input, output) {
   
   presentation=reactiveValues()
   presentation$saved=F
-
+  
   
   observeEvent(input$SavePres, {
     
@@ -661,12 +665,12 @@ server <- function(session, input, output) {
     
     presentations$wason=BARCODE
     presentations$refresh=T
+    
+    
+    
+    
+  })
   
-    
-    
-    
-    })
-    
   
   observeEvent(input$SignUpBTN,{
     
@@ -736,11 +740,41 @@ server <- function(session, input, output) {
   })
   
   observeEvent(input$LogOutBTN,{
+    General <- dbPool(drv = RMySQL::MySQL(),
+                      dbname = "General",
+                      host = "161.35.11.118",
+                      username = "rshiny",
+                      password = "nUXfFY7yD5UATu6H",
+                      port = 3306)
+    
+    
     shinyjs::hide("Dashboard")
     shinyjs::show("SignUp")
     shinyjs::show("Login")
     logged_in$user=-1
     logged_in$logged=F
+    
+    empty=dbGetQuery(General, paste0("SELECT * FROM EMPTY"))
+    #print(empty)
+    user_code$lines=empty$CODE1
+    user_code2$lines=empty$CODE2
+    greek_lines$lines=empty$GREEK
+    english_lines$lines=empty$ENGLISH
+    numSlides=5
+    
+    updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:numSlides),selected = "Slide #1")
+    
+    output$proposition <- renderUI("Untitled")
+    updateTextInput(session,"title","Make Title", "",placeholder = "Untitled")
+    
+    slidenumber=1
+    session$sendCustomMessage("greek_lines_stuff", greek_lines$lines[slidenumber])
+    session$sendCustomMessage("english_lines_stuff", english_lines$lines[slidenumber])
+    session$sendCustomMessage("user_code_stuff", user_code$lines[slidenumber])
+    session$sendCustomMessage("user_code_stuff2", user_code2$lines[slidenumber])
+    
+    
+    poolClose(General)
   })
   
   #Loading, updating and deleting presentations
@@ -788,14 +822,14 @@ server <- function(session, input, output) {
         presentations$wason="New"
         names(list)=presentations$list
       }
-
+      
       updateSelectInput(session, "LoadPres", label = "Load Presentation", choices = list,selected=presentations$wason)
       
       
       #print(presentations$wason)
       #print(presentations$refresh)
       
-
+      
       
       
       
@@ -935,7 +969,7 @@ server <- function(session, input, output) {
     poolClose(General)
     
     presentations$wason=input$LoadPres
-
+    
     presentations$refresh=T
   })
   
@@ -973,7 +1007,7 @@ server <- function(session, input, output) {
   })
   
   
-
+  
   
   
   
@@ -982,4 +1016,7 @@ server <- function(session, input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+
+
 

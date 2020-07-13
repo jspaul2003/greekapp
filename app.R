@@ -959,6 +959,11 @@ server <- function(session, input, output) {
                              sep = ""))
     dbExecute(General, query)
     
+    query <- sprintf<-(paste("UPDATE `Junction1` SET NSLIDES = ",numSlides," WHERE 
+                             PRESENTATION_TABLE_NAME = '",  input$LoadPres,"' ", 
+                             sep = ""))
+    dbExecute(General, query)
+    
     #New Table for Presentation
     pres.data <- data.frame(user_code$lines, user_code2$lines, greek_lines$lines, english_lines$lines)
     pres.data$ID <- seq.int(nrow(pres.data))
@@ -1016,6 +1021,7 @@ server <- function(session, input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
 
 
 

@@ -216,6 +216,8 @@ body <- dashboardBody(
     h3("Insert Code for this slide's plot here:"),
     includeHTML("www/ace.html"),
     
+    tags$br(),
+    
     tags$ul(
       class="horul",
       tags$li(class="horli", actionButton("Preview", "Preview Plot")),
@@ -863,6 +865,7 @@ server <- function(session, input, output) {
       shinyjs::show("SavePres2")
       shinyjs::hide("dash")
       
+      updateSliderInput(session, "numSlides", value = numSlides)
       updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:numSlides),selected = "Slide #1")
       
       output$proposition <- renderUI("Untitled")
@@ -883,8 +886,8 @@ server <- function(session, input, output) {
       greek_lines$lines=myslides$GREEK
       english_lines$lines=myslides$ENGLISH
       numSlides=as.numeric(presentations$nslides[match(input$LoadPres,presentations$tables)])
+      print(numSlides)
       Title=presentations$list[match(input$LoadPres,presentations$tables)]
-      #print(numSlides)
       
       shinyjs::hide("SavePres2")
       shinyjs::show("dash")
@@ -893,6 +896,7 @@ server <- function(session, input, output) {
         presentations$wason2=1
       }
       
+      updateSliderInput(session, "numSlides", value = numSlides)
       updateSelectInput(session, "slides", label = "Slides", choices = paste0("Slide #",1:numSlides), selected= paste("Slide #", presentations$wason2,sep=""))
       
       output$proposition <- renderUI(Title)
